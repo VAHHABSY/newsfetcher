@@ -1,5 +1,8 @@
 name: Fetch Telegram Data
 
+permissions:
+  contents: write
+  
 on:
   schedule:
     - cron: "*/15 * * * *"

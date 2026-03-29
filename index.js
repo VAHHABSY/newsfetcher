@@ -1,8 +1,8 @@
 const fs = require("fs");
+const path = require("path");
 const CryptoJS = require("crypto-js");
 const { setGlobalDispatcher, ProxyAgent } = require("undici");
 const env = require("./env");
-const page = require("./page-ugly");
 
 // ===== Fetch fallback (safety for Node envs) =====
 const fetch = global.fetch || require("node-fetch");
@@ -24,7 +24,7 @@ const TIMEZONE = "Asia/Tehran";
 
 function formatDate(date) {
     return new Date(date).toLocaleString("fa-IR", {
-        timeZone: TIMEZONE
+        timeZone: TIMEZONE,
     });
 }
 
@@ -67,14 +67,29 @@ function encryptToToken(text, password) {
     const enc = CryptoJS.AES.encrypt(text, aesKey, { iv });
     const cipher = enc.ciphertext;
 
-    const mac = CryptoJS.HmacSHA256(
-        salt.clone().concat(iv).concat(cipher),
-        macKey
-    );
+    const mac = CryptoJS.HmacSHA256(salt.clone().concat(iv).concat(cipher), macKey);
 
     const packed = salt.clone().concat(iv).concat(cipher).concat(mac);
 
     return "v1." + b64url(packed);
+}
+
+// ===== Load HTML template (beautified page) =====
+function loadTemplate() {
+    const templatePath = path.join(__dirname, "page-beautiful.html");
+    if (!fs.existsSync(templatePath)) {
+        throw new Error(`Template file not found: ${templatePath}`);
+    }
+
+    const html = fs.readFileSync(templatePath, "utf-8");
+
+    if (!html.includes("#ENCODEDHERE#")) {
+        throw new Error(
+            `Template does not contain the placeholder "#ENCODEDHERE#": ${templatePath}`
+        );
+    }
+
+    return html;
 }
 
 // ===== Main build =====
@@ -82,6 +97,7 @@ async function build() {
     try {
         console.log("Starting build...");
 
+        const template = loadTemplate();
         const MAX_MESSAGES = 50;
 
         for (const channel of env.telegramChannels) {
@@ -110,21 +126,16 @@ async function build() {
                 if (!msg.text || typeof msg.text !== "string") continue;
 
                 // handle seconds vs milliseconds timestamps safely
-                const dateValue =
-                    msg.date < 1e12 ? msg.date * 1000 : msg.date;
+                const dateValue = msg.date < 1e12 ? msg.date * 1000 : msg.date;
 
                 messagesText += `\n\n---------------------------------------`;
                 messagesText += `\n[${formatDate(dateValue)}]\n${msg.text}`;
             }
 
-            const encrypted = encryptToToken(
-                messagesText,
-                env.encryptionKey
-            );
+            const encrypted = encryptToToken(messagesText, env.encryptionKey);
 
-            const html = page.replace("#ENCODEDHERE#", encrypted);
-
-            const filePath = `${OUTPUT_DIR}/${channel}.html`;
+            const html = template.replace("#ENCODEDHERE#", encrypted);
+            const filePath = path.join(OUTPUT_DIR, `${channel}.html`);
 
             fs.writeFileSync(filePath, html, "utf-8");
 
@@ -132,7 +143,6 @@ async function build() {
         }
 
         console.log("Build completed");
-
     } catch (err) {
         console.error("Build failed:", err);
         process.exit(1);

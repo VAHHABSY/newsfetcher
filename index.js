@@ -4,6 +4,9 @@ const { setGlobalDispatcher, ProxyAgent } = require("undici");
 const env = require("./env");
 const page = require("./page-ugly");
 
+// ===== Fetch fallback (safety for Node envs) =====
+const fetch = global.fetch || require("node-fetch");
+
 // ===== Proxy (optional) =====
 if (env.proxy) {
     const proxyAgent = new ProxyAgent(env.proxy);
@@ -16,9 +19,18 @@ if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR);
 }
 
+// ===== Timezone formatter =====
+const TIMEZONE = "Asia/Tehran";
+
+function formatDate(date) {
+    return new Date(date).toLocaleString("fa-IR", {
+        timeZone: TIMEZONE
+    });
+}
+
 // ===== Logging =====
 function timestamp() {
-    return new Date().toLocaleString();
+    return formatDate(new Date());
 }
 
 const originalLog = console.log;
@@ -70,6 +82,8 @@ async function build() {
     try {
         console.log("Starting build...");
 
+        const MAX_MESSAGES = 50;
+
         for (const channel of env.telegramChannels) {
             console.log(`Fetching ${channel}...`);
 
@@ -77,18 +91,30 @@ async function build() {
                 `https://samitel.vercel.app/api/channel?username=${channel}`
             );
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} for ${channel}`);
+            }
+
             const json = await response.json();
+
+            if (!json.messages) {
+                throw new Error(`Invalid response for ${channel}`);
+            }
 
             let messagesText =
                 `پیام‌ها از جدید به قدیمی مرتب شده اند.\n` +
                 `زمان آخرین جمع‌آوری: ${timestamp()}\n\n` +
                 `========= ${channel} =========`;
 
-            for (const msg of json.messages) {
-                if (!msg.text) continue;
+            for (const msg of json.messages.slice(0, MAX_MESSAGES)) {
+                if (!msg.text || typeof msg.text !== "string") continue;
+
+                // handle seconds vs milliseconds timestamps safely
+                const dateValue =
+                    msg.date < 1e12 ? msg.date * 1000 : msg.date;
 
                 messagesText += `\n\n---------------------------------------`;
-                messagesText += `\n[${new Date(msg.date).toLocaleString()}]\n${msg.text}`;
+                messagesText += `\n[${formatDate(dateValue)}]\n${msg.text}`;
             }
 
             const encrypted = encryptToToken(
@@ -100,7 +126,7 @@ async function build() {
 
             const filePath = `${OUTPUT_DIR}/${channel}.html`;
 
-            fs.writeFileSync(filePath, html);
+            fs.writeFileSync(filePath, html, "utf-8");
 
             console.log(`${channel} saved`);
         }
@@ -109,7 +135,7 @@ async function build() {
 
     } catch (err) {
         console.error("Build failed:", err);
-        process.exit(1); // important for GitHub Actions
+        process.exit(1);
     }
 }
 

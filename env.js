@@ -7,7 +7,9 @@ module.exports = {
         'mamlekate',
         'ScorchSword',
         'Rfrens',
-        'DEJradio'
+        'DEJradio',
+        'IranintlTV',
+        'idfinfarsi'
     ],
     encryptionKey: 'N0tS3xyL@Dy'
 }

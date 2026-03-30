@@ -8,13 +8,14 @@ const env = require("./env");
 const fetch = global.fetch || require("node-fetch");
 
 // ===== Proxy (optional) =====
+// Keep it in env.js as: proxy: "http://user:pass@host:port"  OR  "socks5://host:port" (if your undici supports it)
 if (env.proxy) {
     const proxyAgent = new ProxyAgent(env.proxy);
     setGlobalDispatcher(proxyAgent);
 }
 
 // ===== Output folder =====
-const OUTPUT_DIR = "./docs";
+const OUTPUT_DIR = path.join(__dirname, "docs");
 if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR);
 }
@@ -92,6 +93,39 @@ function loadTemplate() {
     return html;
 }
 
+// ===== Version + Manifest writers =====
+function writeVersionAndManifest({ version, channels }) {
+    const versionObj = {
+        version, // number (Date.now())
+        generated_at: new Date().toISOString(),
+        channels,
+    };
+
+    fs.writeFileSync(
+        path.join(OUTPUT_DIR, "version.json"),
+        JSON.stringify(versionObj, null, 2),
+        "utf-8"
+    );
+
+    const manifest = {
+        version,
+        generated_at: versionObj.generated_at,
+        files: channels.map((ch) => ({
+            channel: ch,
+            file: `${ch}.html`,
+            path: `docs/${ch}.html`,
+        })),
+    };
+
+    fs.writeFileSync(
+        path.join(OUTPUT_DIR, "manifest.json"),
+        JSON.stringify(manifest, null, 2),
+        "utf-8"
+    );
+
+    console.log("version.json + manifest.json saved");
+}
+
 // ===== Main build =====
 async function build() {
     try {
@@ -99,6 +133,9 @@ async function build() {
 
         const template = loadTemplate();
         const MAX_MESSAGES = 50;
+
+        // monotonic build version for your auto-downloader
+        const version = Date.now();
 
         for (const channel of env.telegramChannels) {
             console.log(`Fetching ${channel}...`);
@@ -141,6 +178,12 @@ async function build() {
 
             console.log(`${channel} saved`);
         }
+
+        // write version info AFTER all pages are generated
+        writeVersionAndManifest({
+            version,
+            channels: env.telegramChannels,
+        });
 
         console.log("Build completed");
     } catch (err) {

@@ -5,80 +5,314 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="utf-8" />
 
+    <script>
+        (function () {
+            var storedTheme = null;
+            try {
+                storedTheme = localStorage.getItem('news-theme');
+            } catch (err) {
+                storedTheme = null;
+            }
+
+            var prefersNight = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            var theme = storedTheme || (prefersNight ? 'night' : 'day');
+
+            document.documentElement.dataset.theme = theme;
+        }());
+    </script>
+
     <style>
         * {
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-start: #f6efe6;
+            --bg-mid: #f2f0ea;
+            --bg-end: #d9d7cf;
+            --text: #1f2430;
+            --muted: #5f6677;
+            --card: rgba(255, 255, 255, 0.72);
+            --card-border: rgba(19, 26, 43, 0.08);
+            --card-shadow: 0 24px 60px rgba(33, 42, 61, 0.18);
+            --input-bg: rgba(255, 255, 255, 0.84);
+            --input-border: rgba(71, 82, 110, 0.16);
+            --accent: #2f5fff;
+            --accent-strong: #1739c7;
+            --accent-soft: rgba(47, 95, 255, 0.14);
+            --secondary: rgba(31, 36, 48, 0.06);
+            --secondary-hover: rgba(31, 36, 48, 0.1);
+        }
+
+        html[data-theme="night"] {
+            --bg-start: #191d29;
+            --bg-mid: #0f1320;
+            --bg-end: #090b12;
+            --text: #eff3ff;
+            --muted: #a3abc2;
+            --card: rgba(16, 20, 30, 0.68);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --card-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+            --input-bg: rgba(6, 10, 18, 0.72);
+            --input-border: rgba(170, 185, 255, 0.16);
+            --accent: #5f8cff;
+            --accent-strong: #3f67ea;
+            --accent-soft: rgba(95, 140, 255, 0.16);
+            --secondary: rgba(255, 255, 255, 0.06);
+            --secondary-hover: rgba(255, 255, 255, 0.1);
+        }
+
         body {
             margin: 0;
             font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-            background: radial-gradient(circle at top, #1b1f2a, #0b0f17);
+            background:
+                radial-gradient(circle at top, rgba(95, 140, 255, 0.2), transparent 32%),
+                radial-gradient(circle at bottom right, rgba(255, 182, 112, 0.16), transparent 30%),
+                linear-gradient(160deg, var(--bg-start), var(--bg-mid) 48%, var(--bg-end));
             display: flex;
             justify-content: center;
-            padding: 28px;
-            color: #e6e6e6;
+            padding: 26px;
+            color: var(--text);
+            min-height: 100vh;
         }
 
         .container {
             width: 100%;
-            max-width: 720px;
+            max-width: 780px;
         }
 
-        /* Glass card */
+        .shell {
+            position: relative;
+        }
+
+        .backdrop {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .backdrop::before,
+        .backdrop::after {
+            content: "";
+            position: absolute;
+            border-radius: 999px;
+            filter: blur(24px);
+            opacity: 0.7;
+        }
+
+        .backdrop::before {
+            width: 300px;
+            height: 300px;
+            top: -90px;
+            right: -70px;
+            background: rgba(47, 95, 255, 0.22);
+        }
+
+        .backdrop::after {
+            width: 260px;
+            height: 260px;
+            left: -90px;
+            bottom: 8%;
+            background: rgba(255, 166, 77, 0.18);
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .eyebrow {
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: clamp(24px, 4vw, 34px);
+            line-height: 1.1;
+        }
+
+        .brand p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .theme-toggle {
+            border: 1px solid var(--card-border);
+            background: var(--card);
+            color: var(--text);
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(14px);
+        }
+
+        .panel {
+            position: relative;
+            overflow: hidden;
+            border-radius: 28px;
+            padding: 20px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent), var(--card);
+            border: 1px solid var(--card-border);
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        .panel::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(47, 95, 255, 0.08), transparent 42%);
+            pointer-events: none;
+        }
+
+        .panel-grid {
+            position: relative;
+            display: grid;
+            gap: 14px;
+        }
+
+        .hero {
+            display: grid;
+            gap: 10px;
+        }
+
+        .hero .title {
+            margin: 0;
+            font-size: clamp(28px, 4.8vw, 46px);
+            line-height: 1.03;
+            letter-spacing: -0.04em;
+        }
+
+        .hero .copy {
+            margin: 0;
+            max-width: 60ch;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
         .bar {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
-            margin-bottom: 14px;
-            padding: 14px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            margin-top: 6px;
+        }
+
+        .field {
+            flex: 1 1 260px;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
         }
 
         input {
             flex: 1;
-            padding: 11px 12px;
-            font-size: 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background: rgba(0, 0, 0, 0.25);
-            color: #eaeaea;
+            min-width: 0;
+            padding: 0;
+            font-size: 15px;
+            border: none;
+            background: transparent;
+            color: var(--text);
             outline: none;
             transition: 0.2s;
         }
 
         input::placeholder {
-            color: rgba(255, 255, 255, 0.45);
+            color: var(--muted);
+            opacity: 0.72;
         }
 
-        input:focus {
-            border-color: rgba(120, 160, 255, 0.8);
-            box-shadow: 0 0 0 3px rgba(120, 160, 255, 0.15);
+        .field:focus-within {
+            border-color: var(--accent-soft);
+            box-shadow: 0 0 0 4px var(--accent-soft);
         }
 
         button {
             padding: 11px 16px;
             font-size: 14px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
             font-weight: 600;
             color: white;
-            background: linear-gradient(135deg, #4f7cff, #2f5fff);
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
             transition: 0.2s ease;
-            box-shadow: 0 6px 18px rgba(47, 95, 255, 0.25);
+            box-shadow: 0 10px 22px rgba(47, 95, 255, 0.28);
         }
 
         button:hover {
             transform: translateY(-1px);
-            box-shadow: 0 10px 24px rgba(47, 95, 255, 0.35);
+            box-shadow: 0 14px 28px rgba(47, 95, 255, 0.34);
         }
 
         button:active {
             transform: scale(0.98);
+        }
+
+        .secondary {
+            background: var(--secondary);
+            color: var(--text);
+            box-shadow: none;
+            border: 1px solid var(--card-border);
+        }
+
+        .secondary:hover {
+            background: var(--secondary-hover);
+            box-shadow: none;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.28);
+            color: var(--muted);
+        }
+
+        html[data-theme="night"] .status {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .status strong {
+            color: var(--text);
+        }
+
+        .status .chip {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         textarea {
@@ -88,17 +322,17 @@
             outline: none;
 
             width: 100%;
-            height: calc(100dvh - 120px);
+            height: calc(100dvh - 200px);
 
-            padding: 16px;
-            border-radius: 14px;
+            padding: 18px;
+            border-radius: 22px;
 
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: #e6e6e6;
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            color: var(--text);
 
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(14px);
+            box-shadow: var(--card-shadow);
 
             display: none;
 
@@ -106,17 +340,66 @@
         }
 
         textarea::selection {
-            background: rgba(120, 160, 255, 0.35);
+            background: var(--accent-soft);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 16px;
+            }
+
+            .panel {
+                padding: 16px;
+                border-radius: 22px;
+            }
+
+            .topbar {
+                align-items: flex-start;
+            }
+
+            .status {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            textarea {
+                height: calc(100dvh - 230px);
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
+    <div class="backdrop"></div>
+    <div class="container shell">
+        <div class="topbar">
+            <div class="brand">
+                <div class="eyebrow">News-Github Fetcher</div>
+                <h1>Encrypted channel pages with a cleaner interface.</h1>
+                <p>Unlock the GitHub-published page, read the Telegram feed, and switch the theme when you want a darker view.</p>
+            </div>
+            <button class="secondary theme-toggle" type="button" data-theme-toggle>Night mode</button>
+        </div>
 
-        <div class="bar">
-            <input placeholder="Password" />
-            <button>OK</button>
+        <div class="panel">
+            <div class="panel-grid">
+                <div class="status">
+                    <div>
+                        <strong>Private news viewer</strong>
+                        <div>Enter the password to decrypt the channel data stored in this page.</div>
+                    </div>
+                    <div class="chip" data-theme-label>Night</div>
+                </div>
+
+                <div class="bar">
+                    <div class="field">
+                        <input placeholder="Password" autocomplete="current-password" />
+                    </div>
+                    <div class="actions">
+                        <button type="button">Unlock</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <textarea readonly>#ENCODEDHERE#</textarea>
@@ -183,9 +466,29 @@
         }
 
         const input = document.querySelector('input');
-        const button = document.querySelector('button');
+        const button = document.querySelector('.actions button');
         const textarea = document.querySelector('textarea');
+        const themeToggle = document.querySelector('[data-theme-toggle]');
+        const themeLabel = document.querySelector('[data-theme-label]');
         const token = textarea.value.trim();
+
+        function setTheme(theme) {
+            document.documentElement.dataset.theme = theme;
+            themeLabel.textContent = theme === 'night' ? 'Night' : 'Day';
+            themeToggle.textContent = theme === 'night' ? 'Day mode' : 'Night mode';
+
+            try {
+                localStorage.setItem('news-theme', theme);
+            } catch (err) {
+                void err;
+            }
+        }
+
+        setTheme(document.documentElement.dataset.theme || 'night');
+
+        themeToggle.onclick = () => {
+            setTheme(document.documentElement.dataset.theme === 'night' ? 'day' : 'night');
+        };
 
         button.onclick = async () => {
             textarea.value = 'Please wait...';
@@ -194,6 +497,12 @@
                 textarea.value = decryptToken(token, input.value);
             }, 40);
         };
+
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                button.click();
+            }
+        });
     </script>
     </div>
 </body>

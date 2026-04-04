@@ -315,6 +315,28 @@
             gap: 10px;
         }
 
+        .remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 13px;
+            user-select: none;
+        }
+
+        .remember input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            accent-color: var(--accent-strong);
+            cursor: pointer;
+            flex: 0 0 auto;
+        }
+
+        .remember label {
+            cursor: pointer;
+        }
+
         textarea {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Times New Roman", monospace;
             font-size: 15px;
@@ -374,9 +396,9 @@
     <div class="container shell">
         <div class="topbar">
             <div class="brand">
-                <div class="eyebrow">News-Github Fetcher</div>
-                <h1>Encrypted channel pages with a cleaner interface.</h1>
-                <p>Unlock the GitHub-published page, read the Telegram feed, and switch the theme when you want a darker view.</p>
+                <div class="eyebrow">The Study of Language</div>
+                <h1>News & Views</h1>
+                <p>Professor: Dr. Johnny sins</p>
             </div>
             <button class="secondary theme-toggle" type="button" data-theme-toggle>Night mode</button>
         </div>
@@ -385,8 +407,8 @@
             <div class="panel-grid">
                 <div class="status">
                     <div>
-                        <strong>Private news viewer</strong>
-                        <div>Enter the password to decrypt the channel data stored in this page.</div>
+                        <strong>Private Classroom</strong>
+                        <div>Enter the password to open the Classroom.</div>
                     </div>
                     <div class="chip" data-theme-label>Night</div>
                 </div>
@@ -398,6 +420,10 @@
                     <div class="actions">
                         <button type="button">Unlock</button>
                     </div>
+                </div>
+                <div class="remember">
+                    <input id="remember-password" type="checkbox" />
+                    <label for="remember-password">Remember password on this device</label>
                 </div>
             </div>
         </div>
@@ -470,6 +496,7 @@
         const textarea = document.querySelector('textarea');
         const themeToggle = document.querySelector('[data-theme-toggle]');
         const themeLabel = document.querySelector('[data-theme-label]');
+        const rememberPassword = document.querySelector('#remember-password');
         const token = textarea.value.trim();
 
         function setTheme(theme) {
@@ -490,7 +517,37 @@
             setTheme(document.documentElement.dataset.theme === 'night' ? 'day' : 'night');
         };
 
+        try {
+            const savedPassword = localStorage.getItem('saved-password') || '';
+            if (savedPassword) {
+                input.value = savedPassword;
+                rememberPassword.checked = true;
+            }
+        } catch (err) {
+            void err;
+        }
+
+        rememberPassword.addEventListener('change', () => {
+            if (!rememberPassword.checked) {
+                try {
+                    localStorage.removeItem('saved-password');
+                } catch (err) {
+                    void err;
+                }
+            }
+        });
+
         button.onclick = async () => {
+            try {
+                if (rememberPassword.checked) {
+                    localStorage.setItem('saved-password', input.value);
+                } else {
+                    localStorage.removeItem('saved-password');
+                }
+            } catch (err) {
+                void err;
+            }
+
             textarea.value = 'Please wait...';
             textarea.style.display = 'block';
             setTimeout(() => {

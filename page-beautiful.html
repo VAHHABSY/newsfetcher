@@ -414,16 +414,15 @@
                 </div>
 
                 <div class="bar">
-                    <div class="field">
-                        <input placeholder="Password" autocomplete="current-password" />
-                    </div>
-                    <div class="actions">
-                        <button type="button">Unlock</button>
-                    </div>
-                </div>
-                <div class="remember">
-                    <input id="remember-password" type="checkbox" />
-                    <label for="remember-password">Remember password on this device</label>
+                    <form id="unlock-form" autocomplete="on" style="display:contents;">
+                        <input id="unlock-username" name="username" type="text" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;" />
+                        <div class="field">
+                            <input id="unlock-password" name="password" placeholder="Password" autocomplete="current-password" />
+                        </div>
+                        <div class="actions">
+                            <button type="submit">Unlock</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -491,13 +490,19 @@
             }
         }
 
-        const input = document.querySelector('input');
-        const button = document.querySelector('.actions button');
+        const input = document.querySelector('#unlock-password');
+        const button = document.querySelector('.actions button[type="submit"]');
+        const unlockForm = document.querySelector('#unlock-form');
+        const usernameField = document.querySelector('#unlock-username');
         const textarea = document.querySelector('textarea');
         const themeToggle = document.querySelector('[data-theme-toggle]');
         const themeLabel = document.querySelector('[data-theme-label]');
-        const rememberPassword = document.querySelector('#remember-password');
         const token = textarea.value.trim();
+        const currentName = decodeURIComponent(location.pathname.split('/').pop() || '')
+            .replace(/\.html$/i, '')
+            .trim();
+        const accountId = `news-fetcher:${currentName || 'default'}`;
+        usernameField.value = accountId;
 
         function setTheme(theme) {
             document.documentElement.dataset.theme = theme;
@@ -517,43 +522,39 @@
             setTheme(document.documentElement.dataset.theme === 'night' ? 'day' : 'night');
         };
 
-        try {
-            const savedPassword = localStorage.getItem('saved-password') || '';
-            if (savedPassword) {
-                input.value = savedPassword;
-                rememberPassword.checked = true;
+        async function storePasswordWithBrowserManager() {
+            if (!window.isSecureContext || !window.PasswordCredential || !navigator.credentials?.store) {
+                return false;
             }
-        } catch (err) {
-            void err;
-        }
 
-        rememberPassword.addEventListener('change', () => {
-            if (!rememberPassword.checked) {
-                try {
-                    localStorage.removeItem('saved-password');
-                } catch (err) {
-                    void err;
-                }
-            }
-        });
-
-        button.onclick = async () => {
             try {
-                if (rememberPassword.checked) {
-                    localStorage.setItem('saved-password', input.value);
-                } else {
-                    localStorage.removeItem('saved-password');
-                }
+                const credential = new PasswordCredential({
+                    id: accountId,
+                    password: input.value,
+                    name: 'News & Views'
+                });
+
+                await navigator.credentials.store(credential);
+                return true;
             } catch (err) {
                 void err;
+                return false;
             }
+        }
 
+        unlockForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
             textarea.value = 'Please wait...';
             textarea.style.display = 'block';
-            setTimeout(() => {
-                textarea.value = decryptToken(token, input.value);
+            setTimeout(async () => {
+                const result = decryptToken(token, input.value);
+                textarea.value = result;
+
+                if (result !== 'Wrong password!') {
+                    await storePasswordWithBrowserManager();
+                }
             }, 40);
-        };
+        });
 
         input.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {

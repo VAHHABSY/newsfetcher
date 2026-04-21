@@ -11,5 +11,5 @@ module.exports = {
         'IranintlTV',
         'idfinfarsi'
     ],
-    encryptionKey: 'N0tS3xyL@Dy'
+    encryptionKey: 'BreakingNews'
 }
